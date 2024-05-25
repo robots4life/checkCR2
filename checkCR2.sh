@@ -30,7 +30,7 @@ check_file() {
                     echo "" >> "$folder/files_report.txt"
                     echo "" >> "$folder/files_report.txt"
                     echo "File DAMAGED DATA" >&2
-                    copy_damaged_file "$file"
+                    copy_damaged_file "$file" "$folder"
                 else
                     echo "$file" >> "$folder/files_ok.txt"
                     echo "- $file" >> "$folder/files_report.txt"
@@ -54,7 +54,7 @@ check_file() {
                 echo "" >> "$folder/files_report.txt"
                 echo "" >> "$folder/files_report.txt"
                 echo "File DAMAGED DATA" >&2
-                copy_damaged_file "$file"
+                copy_damaged_file "$file" "$folder"
             fi
         else
             echo "$file" >> "$folder/files_damaged.txt"
@@ -68,7 +68,7 @@ check_file() {
             echo "" >> "$folder/files_report.txt"
             echo "" >> "$folder/files_report.txt"
             echo "File DAMAGED HEADER" >&2
-            copy_damaged_file "$file"
+            copy_damaged_file "$file" "$folder"
         fi
 
         # Remove the extracted thumbnail
@@ -89,7 +89,7 @@ check_file() {
                 echo "" >> "$folder/files_report.txt"
                 echo "" >> "$folder/files_report.txt"
                 echo "File DAMAGED DATA" >&2
-                copy_damaged_file "$file"
+                copy_damaged_file "$file" "$folder"
             else
                 echo "$file" >> "$folder/files_ok.txt"
                 echo "- $file" >> "$folder/files_report.txt"
@@ -109,7 +109,7 @@ check_file() {
             echo "" >> "$folder/files_report.txt"
             echo "" >> "$folder/files_report.txt"
             echo "File DAMAGED HEADER" >&2
-            copy_damaged_file "$file"
+            copy_damaged_file "$file" "$folder"
         fi
     fi
 }
@@ -117,6 +117,7 @@ check_file() {
 # Function to copy damaged files to the "damaged" folder
 copy_damaged_file() {
     local file="$1"
+    local folder="$2"
     local damaged_folder="$folder/damaged"
     local filename=$(basename "$file")
     local extension="${filename##*.}"
@@ -127,46 +128,75 @@ copy_damaged_file() {
     cp "$file" "$damaged_folder/$new_filename"
 }
 
+# Function to recursively traverse folders and create folder_tree.txt
+create_folder_tree() {
+    local folder="$1"
+    if [ "$(basename "$folder")" != "damaged" ]; then
+        echo "$folder" | sed 's#//#/#' >> "$parent_folder/folder_tree.txt"
+    fi
+
+    for entry in "$folder"/*; do
+        if [ -d "$entry" ]; then
+            create_folder_tree "$entry"
+        fi
+    done
+}
+
 # Check if a folder is provided as an argument
 if [ -z "$1" ]; then
     echo "Usage: $0 <folder_path>"
     exit 1
 fi
 
-folder="$1"
+parent_folder="$1"
 
-# Check if the text files exist and delete them
-for file in "$folder"/files_damaged.txt "$folder"/files_ok.txt "$folder"/files_paths.txt "$folder"/files_report.txt; do
-    if [ -f "$file" ]; then
-        rm "$file"
+# Create folder_tree.txt
+> "$parent_folder/folder_tree.txt"
+create_folder_tree "$parent_folder"
+
+# Output folder_tree.txt to the terminal line by line, excluding "damaged" folders
+echo "Folder structure:"
+while read -r folder; do
+    if [ "$(basename "$folder")" != "damaged" ]; then
+        echo "$folder"
     fi
-done
+done < "$parent_folder/folder_tree.txt"
 
-# Create new text files
-> "$folder/files_paths.txt"
-> "$folder/files_damaged.txt"
-> "$folder/files_ok.txt"
-> "$folder/files_report.txt"
-
-# Check if the "damaged" folder exists and delete it
-if [ -d "$folder/damaged" ]; then
-    rm -rf "$folder/damaged"
+# Ask user if the script should be executed on each folder
+read -p "Do you want to check files in these folders? (y/n) " answer
+if [ "$answer" != "y" ]; then
+    echo "Exiting without checking files."
+    exit 0
 fi
 
-# Create a new "damaged" folder
-mkdir "$folder/damaged"
+# Execute the script on each folder found in the folder_tree.txt, excluding "damaged" folders
+while read -r folder; do
+    if [ "$(basename "$folder")" != "damaged" ]; then
+        echo "Checking files in $folder..."
 
-# Find all files in the folder
-echo "Finding files in $folder..."
-find "$folder" -type f -print0 | while IFS= read -r -d '' file; do
-    echo "$file" >> "$folder/files_paths.txt"
-done
+        # Create text files and "damaged" folder in the current folder
+        > "$folder/files_paths.txt"
+        > "$folder/files_damaged.txt"
+        > "$folder/files_ok.txt"
+        > "$folder/files_report.txt"
 
-# Check each file
-echo "Checking files..."
-while read -r file; do
-    echo "Checking $file..."
-    check_file "$file"
-done < "$folder/files_paths.txt"
+        if [ -d "$folder/damaged" ]; then
+            rm -rf "$folder/damaged"
+        fi
+        mkdir "$folder/damaged"
 
-echo "Done!"
+        # Find all files in the current folder
+        find "$folder" -type f -print0 | while IFS= read -r -d '' file; do
+            echo "$file" >> "$folder/files_paths.txt"
+        done
+
+        # Check each file in the current folder
+        while read -r file; do
+            check_file "$file"
+        done < "$folder/files_paths.txt"
+
+        echo "Done checking $folder!"
+    fi
+done < "$parent_folder/folder_tree.txt"
+
+echo "All folders checked."
