@@ -4,7 +4,8 @@ store_parent_folder() {
   if [ "$1" = "." ]; then
     parent_folder="$(pwd)"
   else
-    parent_folder="$1"
+    # Remove the trailing slash if present
+    parent_folder="${1%/}"
   fi
 
   read -p "The parent folder is set to $parent_folder.
@@ -92,13 +93,13 @@ filter_image_files() {
 
 check_CR2_image_metadata() {
   while IFS= read -r current_path; do
-    echo -e "\n"
+    # echo -e "\n"
     echo "Checking files in path $current_path.."
 
     # Check each file in the files_paths.txt file
     while IFS= read -r file; do
 
-      file_mime_type=$(file -i "$file" | awk -F': ' '{print $2}')
+      file_mime_type=$(file -i "$file" | awk -F': ' '{print $2}' | sed 's/; charset=binary//')
 
       if [[ "$file_mime_type" == *"cr2"* ]]; then
 
@@ -134,6 +135,7 @@ check_CR2_image_metadata() {
         echo >>"$current_path/files_report.txt"
         echo >>"$current_path/files_report.txt"
         echo >>"$current_path/files_report.txt"
+
       fi
 
     done <"$current_path/files_paths.txt"
@@ -187,13 +189,13 @@ copy_damaged_file() {
 
 check_image_files() {
   while IFS= read -r current_path; do
-    echo -e "\n"
+    # echo -e "\n"
     echo "Checking files in path $current_path.."
 
     # Check each file in the files_paths.txt file
     while IFS= read -r file; do
 
-      file_mime_type=$(file -i "$file" | awk -F': ' '{print $2}')
+      file_mime_type=$(file -i "$file" | awk -F': ' '{print $2}' | sed 's/; charset=binary//')
 
       if [[ "$file_mime_type" == *"jpeg"* ]]; then
 
@@ -215,6 +217,7 @@ check_image_files() {
             echo -e "\n"
 
             echo "$identify_output" >>"$current_path/files_report.txt"
+            echo "Checking $file_mime_type file $file"
             echo "File DAMAGED DATA" >>"$current_path/files_report.txt"
 
             copy_damaged_file "$file"
