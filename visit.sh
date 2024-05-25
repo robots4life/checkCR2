@@ -19,7 +19,7 @@ fi
 touch "$folder_tree_file"
 
 # Recursively traverse subfolders and write paths to "folder_tree.txt"
-find "$parent_folder" -type d | grep -v "^$parent_folder$" >> "$folder_tree_file"
+find "$parent_folder" -type d | grep -v "^$parent_folder$" >>"$folder_tree_file"
 
 # Output the folder tree to the terminal
 echo "Folder tree:"
