@@ -1,5 +1,7 @@
 1.
 
+Note: This script assumes that both dcraw and identify (from ImageMagick) are installed and available in your system's PATH. If not, you may need to provide the full paths to the executables in the script.
+
 ```shell
 sudo apt-get install dcraw
 ```
