@@ -141,7 +141,6 @@ check_CR2_image_metadata() {
 
           # New function to check CR2 image thumbnail
           check_CR2_image_thumbnail
-          copy_damaged_file "$file"
 
         else
           echo "File Metadata DAMAGED" >>"$current_path/files_report.txt"
@@ -167,6 +166,9 @@ check_CR2_image_thumbnail() {
     local identify_output=$(identify -regard-warnings "$thumbnail_file" 2>&1)
 
     if echo "$identify_output" | grep -q "Corrupt JPEG data"; then
+
+      # copy orginal file to "damaged" folder in current path
+      copy_damaged_file "$file"
 
       if [ ! -f "$current_path/files_damaged.txt" ]; then
         touch "$current_path/files_damaged.txt"
@@ -204,13 +206,27 @@ copy_damaged_file() {
 }
 
 remove_log_files() {
+  echo ""
   echo -e "${WHITE}Removing log files.."
   while IFS= read -r current_path; do
+
+    # If there is a "files_report.txt" in the current path
+    if [ -f "$current_path/files_report.txt" ]; then
+
+      # If there are no errors remove the "files_report.txt"
+      search_string="Corrupt"
+      if ! grep -q "$search_string" "$current_path/files_report.txt"; then
+        echo ""
+        echo -e "${GREEN}No Errors found in all checked files - deleting files report."
+        rm -f "$current_path/files_report.txt"
+      fi
+    fi
+
     rm -f "$current_path/folder_tree.txt"
     rm -f "$current_path/files_paths.txt"
   done <"$parent_folder/folder_tree.txt"
   echo ""
-  echo "Done."
+  echo -e "${WHITE}Done."
   echo ""
 }
 
