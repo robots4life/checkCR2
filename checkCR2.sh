@@ -140,6 +140,7 @@ check_CR2_image_metadata() {
           echo "File Metadata OK" >>"$current_path/files_report.txt"
 
           # New function to check CR2 image thumbnail
+          # If the file header is OK check the file body
           check_CR2_image_thumbnail
 
         else
