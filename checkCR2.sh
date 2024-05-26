@@ -1,5 +1,9 @@
 #!/bin/bash
 
+WHITE='\033[0;37m'
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+
 store_parent_folder() {
   if [ "$1" = "." ]; then
     parent_folder="$(pwd)"
@@ -7,11 +11,15 @@ store_parent_folder() {
     # Remove the trailing slash if present
     parent_folder="${1%/}"
   fi
-
-  read -p "The parent folder is set to $parent_folder.
-Is this correct? (y/n) " confirm
+  echo ""
+  echo "The parent folder is set to the following folder."
+  echo ""
+  echo "$parent_folder"
+  echo ""
+  read -p "Is this correct? (y/n) " confirm
+  echo ""
   case $confirm in
-  y | Y) echo "Proceeding with the parent folder: $parent_folder" ;;
+  y | Y) echo "Creating folder tree under the parent folder." ;;
   n | N)
     echo "Exiting script."
     exit 1
@@ -47,10 +55,15 @@ create_folder_tree() {
   sort -u "$parent_folder/folder_tree.txt" -o "$parent_folder/folder_tree.txt"
 
   # Print the "folder_tree.txt" file to the terminal
+  echo ""
+  echo "This is the list of folders that will be checked."
+  echo ""
   cat "$parent_folder/folder_tree.txt"
 
   # Ask the user if the script should continue
+  echo ""
   read -p "Do you want to continue executing further functions? (y/n) " continue_confirm
+  echo ""
   case $continue_confirm in
   y | Y) echo "Continuing with the script." ;;
   n | N)
@@ -66,7 +79,8 @@ create_folder_tree() {
 
 filter_image_files() {
   while IFS= read -r current_path; do
-    echo "Filtering files in path $current_path.."
+    echo ""
+    echo "Generating list of image files to check in $current_path.."
 
     # Delete existing text files
     find "$current_path" -maxdepth 1 -type f -name "files_paths.txt" -delete
@@ -94,7 +108,9 @@ filter_image_files() {
 check_CR2_image_metadata() {
   while IFS= read -r current_path; do
     # echo -e "\n"
-    echo "Checking files in path $current_path.."
+    echo ""
+    echo -e "${WHITE}Checking files in path $current_path.."
+    echo ""
 
     # Check each file in the files_paths.txt file
     while IFS= read -r file; do
@@ -104,7 +120,7 @@ check_CR2_image_metadata() {
       if [[ "$file_mime_type" == *"cr2"* ]]; then
 
         # File is a CR2 image
-        echo "Checking $file_mime_type file $file"
+        echo -e "${WHITE}Checking $file_mime_type file $file"
 
         local metadata=$(dcraw -v -i "$file" 2>&1)
         local metadata_status=$?
@@ -160,14 +176,14 @@ check_CR2_image_thumbnail() {
       echo "$identify_output" >>"$current_path/files_damaged.txt"
       echo >>"$current_path/files_damaged.txt"
       echo >>"$current_path/files_damaged.txt"
-      echo "File DAMAGED DATA"
-      echo -e "\n"
+      echo -e "${RED}File DAMAGED DATA"
+      echo ""
 
       echo "$identify_output" >>"$current_path/files_report.txt"
       echo "File DAMAGED DATA" >>"$current_path/files_report.txt"
 
     else
-      echo "File OK"
+      echo -e "${GREEN}File OK"
     fi
   fi
 
@@ -185,6 +201,17 @@ copy_damaged_file() {
 
   mkdir -p "$damaged_folder"
   cp "$file" "$damaged_folder/$new_filename"
+}
+
+remove_log_files() {
+  echo -e "${WHITE}Removing log files.."
+  while IFS= read -r current_path; do
+    rm -f "$current_path/folder_tree.txt"
+    rm -f "$current_path/files_paths.txt"
+  done <"$parent_folder/folder_tree.txt"
+  echo ""
+  echo "Done."
+  echo ""
 }
 
 check_image_files() {
@@ -240,4 +267,5 @@ store_parent_folder "$1"
 create_folder_tree
 filter_image_files
 check_CR2_image_metadata
-check_image_files
+# check_image_files
+remove_log_files
