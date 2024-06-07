@@ -34,6 +34,8 @@ This script
 - checks the extracted JPEG file from the CR2 file for corruption
 - if no file corruption is found in the temporary JPEG file the JPEG file is deleted
 - if file corruption is present the affected CR2 file will be copied to a "damaged" folder in the current path, the temporary JPEG file will be deleted and not copied to the "damaged" folder
+- checks the JPEG, PNG and GIF files with identify
+- if file corruption is present in a JPEG, PNG or GIF file, the affected file will be copied to a "damaged" folder in the current path
 - a detailed file report will be generated
 - a list of all damaged files will be generated
 - if all files are ok all log files and temporary files will be deleted
