@@ -20,8 +20,12 @@ store_parent_directory() {
 
   # Get the modification time of the parent directory
   modification_time_parent_directory=$(stat -c %y "$parent_directory")
+  creation_time_parent_directory=$(stat -c %w "$parent_directory")
 
-  echo "$modification_time_parent_directory"
+  echo "original modi time : $modification_time_parent_directory"
+  echo ""
+
+  echo "original crea time : $creation_time_parent_directory"
   echo ""
 
   read -p "Is this correct? (y/n) " confirm
@@ -45,15 +49,22 @@ create_directory_tree() {
   if [ -f "$parent_directory/directory_tree.txt" ]; then
     rm "$parent_directory/directory_tree.txt"
   fi
-
   # Create a new file named "directory_tree.txt" in the parent directory
   touch "$parent_directory/directory_tree.txt"
 
+  # Check if a file named "modification_times.txt" exists in the parent directory
+  if [ -f "$parent_directory/modification_times.txt" ]; then
+    rm "$parent_directory/modification_times.txt"
+  fi
   # Create a new file named "modification_times.txt" in the parent directory
   touch "$parent_directory/modification_times.txt"
 
-  # Write the modification time of the parent directory to the "modification_times.txt" file
-  # echo "parent:$parent_directory:$modification_time_parent_directory" >>"$parent_directory/modification_times.txt"
+  # Check if a file named "creation_times.txt" exists in the parent directory
+  if [ -f "$parent_directory/creation_times.txt" ]; then
+    rm "$parent_directory/creation_times.txt"
+  fi
+  # Create a new file named "creation_times.txt" in the parent directory
+  touch "$parent_directory/creation_times.txt"
 
   # Traverse all subdirectories of the parent directory
   while IFS= read -r -d '' subdirectory; do
@@ -67,6 +78,10 @@ create_directory_tree() {
       # Get the modification time of the subdirectory and write it to the "modification_times.txt" file
       modification_time=$(stat -c %y "$subdirectory")
       echo "$subdirectory:$modification_time" >>"$parent_directory/modification_times.txt"
+
+      # Get the creation time of the subdirectory and write it to the "modification_times.txt" file
+      creation_time_=$(stat -c %w "$subdirectory")
+      echo "$subdirectory:$modification_time" >>"$parent_directory/creation_times.txt"
     fi
   done < <(find "$parent_directory" -type d -print0)
 
@@ -308,6 +323,7 @@ check_CR2_image_thumbnail() {
       echo >>"$parent_directory/files_report_master.txt" # add new line to file
 
       echo -e "${GREEN}File OK"
+      echo ""
     fi
   fi
 
@@ -375,7 +391,8 @@ remove_log_files() {
   echo ""
 }
 
-restore_original_modification_times() {
+restore_original_modification_and_creation_times() {
+
   # Check if the "modification_times.txt" file exists
   if [ -f "$parent_directory/modification_times.txt" ]; then
     # Traverse all lines in the "modification_times.txt" file
@@ -389,8 +406,23 @@ restore_original_modification_times() {
   fi
 
   rm -f $parent_directory/modification_times.txt
+  touch -d "$creation_time_parent_directory" "$parent_directory"
 
-  touch -d "$modification_time_parent_directory" "$parent_directory"
+  # Check if the "creation_times.txt" file exists
+  if [ -f "$parent_directory/creation_times.txt" ]; then
+    # Traverse all lines in the "creation_times.txt" file
+    while IFS=':' read -r directory creation_time; do
+      # Restore the original creation time for the directory
+      touch -d "$creation_time" "$directory"
+    done <"$parent_directory/creation_times.txt"
+  else
+    echo "Error: creation_times.txt file not found."
+    exit 1
+  fi
+
+  rm -f $parent_directory/creation_times.txt
+  touch -d "$creation_time_parent_directory" "$parent_directory"
+
 }
 
 # Check if an argument is provided
@@ -404,4 +436,4 @@ create_directory_tree
 filter_image_files
 check_CR2_image_metadata
 remove_log_files
-restore_original_modification_times
+restore_original_modification_and_creation_times
