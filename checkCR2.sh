@@ -335,10 +335,10 @@ copy_damaged_file() {
 
   local file="$1"
   # instead of creating a damaged directory in each current path
-  # local damaged_directory="$current_path/damaged"
+  local damaged_directory="$current_path/damaged"
 
   # create a damaged directory in the parent directory and append the name of directory where the damaged files are to it
-  local damaged_directory="$parent_directory/$(basename "$current_path")_damaged"
+  # local damaged_directory="$parent_directory/$(basename "$current_path")_damaged"
 
   local filename=$(basename "$file")
   local extension="${filename##*.}"
