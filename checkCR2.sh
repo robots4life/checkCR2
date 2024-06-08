@@ -4,22 +4,23 @@ WHITE='\033[0;37m'
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 
-store_parent_folder() {
+store_parent_directory() {
+
   if [ "$1" = "." ]; then
-    parent_folder="$(pwd)"
+    parent_directory="$(pwd)"
   else
     # Remove the trailing slash if present
-    parent_folder="${1%/}"
+    parent_directory="${1%/}"
   fi
   echo ""
-  echo "The parent folder is set to the following folder."
+  echo "The parent directory is set to the following directory."
   echo ""
-  echo "$parent_folder"
+  echo "$parent_directory"
   echo ""
   read -p "Is this correct? (y/n) " confirm
   echo ""
   case $confirm in
-  y | Y) echo "Creating folder tree under the parent folder." ;;
+  y | Y) echo "Creating directory tree under the parent directory." ;;
   n | N)
     echo "Exiting script."
     exit 1
@@ -31,34 +32,54 @@ store_parent_folder() {
   esac
 }
 
-create_folder_tree() {
-  # Check if a file named "folder_tree.txt" exists in the parent folder
-  if [ -f "$parent_folder/folder_tree.txt" ]; then
-    rm "$parent_folder/folder_tree.txt"
+create_directory_tree_with_original_modification_time() {
+
+  # Get the original modification time of the parent directory
+  # parent_directory_original_modification_time=$(stat -c %y $parent_directory)
+  # echo $parent_directory_original_modification_time
+
+  # Check if a file named "directory_tree.txt" exists in the parent directory
+  if [ -f "$parent_directory/directory_tree.txt" ]; then
+    rm "$parent_directory/directory_tree.txt"
   fi
 
-  # Create a new file named "folder_tree.txt" in the parent folder
-  touch "$parent_folder/folder_tree.txt"
+  # Create a new file named "directory_tree.txt" in the parent directory
+  touch "$parent_directory/directory_tree.txt"
 
-  # Traverse all subfolders of the parent folder
-  while IFS= read -r -d '' subfolder; do
-    # Check if the subfolder is named "damaged"
-    if [ "$(basename "$subfolder")" = "damaged" ]; then
-      rm -rf "$subfolder"
+  # Traverse all subdirectories of the parent directory
+  while IFS= read -r -d '' subdirectory; do
+
+    # Check if the subdirectory is named "damaged"
+    if [ "$(basename "$subdirectory")" = "damaged" ]; then
+
+      rm -rf "$subdirectory"
+
     else
-      # Write the subfolder path to the "folder_tree.txt" file
-      echo "$subfolder" >>"$parent_folder/folder_tree.txt"
+
+      # # Get the original modification time of the subdirectory
+      # subdirectory_original_modification_time=$(stat -c %y $subdirectory)
+      # echo "$subdirectory_original_modification_time" >>"$parent_directory/directory_tree.txt"
+
+      # Write the subdirectory path to the "directory_tree.txt" file
+      echo "$subdirectory" >>"$parent_directory/directory_tree.txt"
+
     fi
-  done < <(find "$parent_folder" -type d -print0)
 
-  # Remove duplicate paths from the "folder_tree.txt" file
-  sort -u "$parent_folder/folder_tree.txt" -o "$parent_folder/folder_tree.txt"
+  done < <(find "$parent_directory" -type d -print0)
 
-  # Print the "folder_tree.txt" file to the terminal
+  # Restore the original modification time of the parent directory
+  # touch -m -t 202406010000.00 directory
+  # formatted_date=$(date -d "$parent_directory_original_modification_time" +%Y%m%d%H%M.%S)
+  # touch -m -t "$formatted_date" "$parent_directory"
+
+  # Remove duplicate paths from the "directory_tree.txt" file
+  sort -u "$parent_directory/directory_tree.txt" -o "$parent_directory/directory_tree.txt"
+
+  # Print the "directory_tree.txt" file to the terminal
   echo ""
-  echo "This is the list of folders that will be checked."
+  echo "This is the list of directorys that will be checked."
   echo ""
-  cat "$parent_folder/folder_tree.txt"
+  cat "$parent_directory/directory_tree.txt"
 
   # Ask the user if the script should continue
   echo ""
@@ -78,6 +99,7 @@ create_folder_tree() {
 }
 
 filter_image_files() {
+
   while IFS= read -r current_path; do
     echo ""
     echo "Generating list of image files to check in $current_path.."
@@ -86,7 +108,6 @@ filter_image_files() {
     find "$current_path" -maxdepth 1 -type f -name "files_paths.txt" -delete
     find "$current_path" -maxdepth 1 -type f -name "files_report.txt" -delete
     find "$current_path" -maxdepth 1 -type f -name "files_report_master.txt" -delete
-    find "$current_path" -maxdepth 1 -type f -name "files_ok.txt" -delete
     find "$current_path" -maxdepth 1 -type f -name "files_damaged.txt" -delete
 
     # Create a new files_paths.txt file
@@ -103,19 +124,21 @@ filter_image_files() {
         esac
       fi
     done
-  done <"$parent_folder/folder_tree.txt"
+  done <"$parent_directory/directory_tree.txt"
 }
 
 check_CR2_image_metadata() {
+
   while IFS= read -r current_path; do
+
     # echo -e "\n"
     echo ""
     echo -e "${WHITE}Checking files in path $current_path.."
     echo ""
 
-    # Create files_report_master.txt in parent folder if it doesn't exist
-    if [ ! -f "$parent_folder/files_report_master.txt" ]; then
-      touch "$parent_folder/files_report_master.txt"
+    # Create files_report_master.txt in parent directory if it doesn't exist
+    if [ ! -f "$parent_directory/files_report_master.txt" ]; then
+      touch "$parent_directory/files_report_master.txt"
     fi
 
     # Check each file in the files_paths.txt file
@@ -123,6 +146,7 @@ check_CR2_image_metadata() {
 
       file_mime_type=$(file -i "$file" | awk -F': ' '{print $2}' | sed 's/; charset=binary//')
 
+      # check CR2 files
       if [[ "$file_mime_type" == *"cr2"* ]]; then
 
         # File is a CR2 image
@@ -132,49 +156,53 @@ check_CR2_image_metadata() {
         local metadata_status=$?
 
         # Create files_report.txt if it doesn't exist
-        if [ ! -f "$current_path/files_report.txt" ]; then
-          touch "$current_path/files_report.txt"
-        fi
+        # if [ ! -f "$current_path/files_report.txt" ]; then
+        #   touch "$current_path/files_report.txt"
+        # fi
 
         # Write the file path and dcraw output to files_report.txt in the current path
-        echo "$file" >>"$current_path/files_report.txt"
-        echo "$metadata" >>"$current_path/files_report.txt"
-        echo >>"$current_path/files_report.txt"
-        echo "File Metadata Exit Status Code = $metadata_status" >>"$current_path/files_report.txt"
+        # echo "$file" >>"$current_path/files_report.txt"
+        # echo "$metadata" >>"$current_path/files_report.txt"
+        # echo >>"$current_path/files_report.txt"
+        # echo "File Metadata Exit Status Code = $metadata_status" >>"$current_path/files_report.txt"
 
-        # Write the file path and dcraw output to files_report_master.txt in the parent folder
-        echo "$current_path" >>"$parent_folder/files_report_master.txt"
-        echo >>"$parent_folder/files_report_master.txt"
+        # Write the file path and dcraw output to files_report_master.txt in the parent directory
+        echo "$file" >>"$parent_directory/files_report_master.txt"
+        echo "$metadata" >>"$parent_directory/files_report_master.txt"
 
-        echo "$file" >>"$parent_folder/files_report_master.txt"
-        echo "$metadata" >>"$parent_folder/files_report_master.txt"
-        echo >>"$parent_folder/files_report_master.txt"
+        echo >>"$parent_directory/files_report_master.txt" # add new line to file
 
-        echo "File Metadata Exit Status Code = $metadata_status" >>"$parent_folder/files_report_master.txt"
+        echo "File Metadata Exit Status Code = $metadata_status" >>"$parent_directory/files_report_master.txt"
 
         if [ $metadata_status -eq 0 ]; then
-          echo "File Metadata OK" >>"$current_path/files_report.txt"
+          # echo "File Metadata OK" >>"$current_path/files_report.txt"
+
+          echo "File Metadata OK" >>"$parent_directory/files_report_master.txt"
 
           # New function to check CR2 image thumbnail
           # If the file header is OK check the file body
           check_CR2_image_thumbnail
 
         else
-          echo "File Metadata DAMAGED" >>"$current_path/files_report.txt"
-          echo "File Metadata DAMAGED" >>"$parent_folder/files_report_master.txt"
+          # echo "File Metadata DAMAGED" >>"$current_path/files_report.txt"
+
+          echo "File Metadata DAMAGED" >>"$parent_directory/files_report_master.txt"
+          echo >>"$parent_directory/files_report_master.txt" # add new line to file
           echo "File Metadata DAMAGED"
+
         fi
 
-        echo >>"$current_path/files_report.txt"
-        echo >>"$current_path/files_report.txt"
-        echo >>"$current_path/files_report.txt"
+        # echo >>"$current_path/files_report.txt"
+        # echo >>"$current_path/files_report.txt"
+        # echo >>"$current_path/files_report.txt"
 
-        echo >>"$parent_folder/files_report_master.txt"
-        echo >>"$parent_folder/files_report_master.txt"
-        echo >>"$parent_folder/files_report_master.txt"
+        # echo >>"$parent_directory/files_report_master.txt"
+        # echo >>"$parent_directory/files_report_master.txt"
+        # echo >>"$parent_directory/files_report_master.txt"
 
       fi
 
+      # check JPEG, PNG, GIF files
       if [[ "$file_mime_type" == *"jpeg"* ]] || [[ "$file_mime_type" == *"png"* ]] || [[ "$file_mime_type" == *"gif"* ]]; then
 
         # File is a JPEG image OR a PNG image OR a GIF image
@@ -186,32 +214,46 @@ check_CR2_image_metadata() {
         if [ $status -eq 0 ]; then
           if echo "$identify_output" | grep -q "Corrupt JPEG data"; then
 
-            if [ ! -f "$current_path/files_damaged.txt" ]; then
-              touch "$current_path/files_damaged.txt"
-            fi
+            # if [ ! -f "$current_path/files_damaged.txt" ]; then
+            #   touch "$current_path/files_damaged.txt"
+            # fi
 
-            echo "$file" >>"$current_path/files_damaged.txt"
-            echo "$identify_output" >>"$current_path/files_damaged.txt"
-            echo >>"$current_path/files_damaged.txt"
-            echo >>"$current_path/files_damaged.txt"
+            # Write file and output of check to files_damaged.txt in current path
+            # echo "$file" >>"$current_path/files_damaged.txt"
+            # echo "$identify_output" >>"$current_path/files_damaged.txt"
+            # echo >>"$current_path/files_damaged.txt"
+            # echo >>"$current_path/files_damaged.txt"
+
+            # Write file and output of check to files_report.txt in current path
+            # echo "$identify_output" >>"$current_path/files_report.txt"
+            # echo "File DAMAGED DATA" >>"$current_path/files_report.txt"
+
+            # Write the file path and output of check to files_report_master.txt in the parent directory
+            # echo "$current_path" >>"$parent_directory/files_report_master.txt"
+            # echo >>"$parent_directory/files_report_master.txt"
+
+            # Write the file path and identify_output output to files_report_master.txt in the parent directory
+            echo "$file" >>"$parent_directory/files_report_master.txt"
+            echo "$identify_output" >>"$parent_directory/files_report_master.txt"
+            echo "File DAMAGED DATA" >>"$parent_directory/files_report_master.txt"
+
+            echo >>"$parent_directory/files_report_master.txt" # add new line to file
+            echo >>"$parent_directory/files_report_master.txt" # add new line to file
+
             echo -e "${RED}File DAMAGED DATA"
             echo ""
-
-            echo "$identify_output" >>"$current_path/files_report.txt"
-            echo "File DAMAGED DATA" >>"$current_path/files_report.txt"
-
-            # Write the file path and identify_output output to files_report_master.txt in the parent folder
-            echo "$current_path" >>"$parent_folder/files_report_master.txt"
-            echo >>"$parent_folder/files_report_master.txt"
-
-            echo "$file" >>"$parent_folder/files_report_master.txt"
-            echo "$identify_output" >>"$parent_folder/files_report_master.txt"
-            echo "File DAMAGED DATA" >>"$parent_folder/files_report_master.txt"
-            echo >>"$parent_folder/files_report_master.txt"
 
             copy_damaged_file "$file"
 
           else
+            # echo "$file" >>"$current_path/files_report.txt"
+            # echo "File OK" >>"$current_path/files_report.txt"
+            # echo >>"$current_path/files_report.txt"
+
+            # echo "$file" >>"$parent_directory/files_report_master.txt"
+            # echo "File OK" >>"$parent_directory/files_report_master.txt"
+            # echo >>"$parent_directory/files_report_master.txt"
+
             echo -e "${GREEN}File OK"
             echo ""
 
@@ -222,10 +264,12 @@ check_CR2_image_metadata() {
       fi
 
     done <"$current_path/files_paths.txt"
-  done <"$parent_folder/folder_tree.txt"
+
+  done <"$parent_directory/directory_tree.txt"
 }
 
 check_CR2_image_thumbnail() {
+
   local thumbnail_file="${file%.*}.thumb.jpg"
   dcraw -e "$file" >"$thumbnail_file" 2>/dev/null
   local thumbnail_status=$?
@@ -235,27 +279,36 @@ check_CR2_image_thumbnail() {
 
     if echo "$identify_output" | grep -q "Corrupt JPEG data"; then
 
-      # copy orginal file to "damaged" folder in current path
+      # copy orginal file to "damaged" directory in current path
       copy_damaged_file "$file"
 
-      if [ ! -f "$current_path/files_damaged.txt" ]; then
-        touch "$current_path/files_damaged.txt"
-      fi
+      # if [ ! -f "$current_path/files_damaged.txt" ]; then
+      #   touch "$current_path/files_damaged.txt"
+      # fi
 
-      echo "$file" >>"$current_path/files_damaged.txt"
-      echo "$identify_output" >>"$current_path/files_damaged.txt"
-      echo >>"$current_path/files_damaged.txt"
-      echo >>"$current_path/files_damaged.txt"
+      # echo "$file" >>"$current_path/files_damaged.txt"
+      # echo "$identify_output" >>"$current_path/files_damaged.txt"
+      # echo >>"$current_path/files_damaged.txt"
+      # echo >>"$current_path/files_damaged.txt"
+
+      # echo "$identify_output" >>"$current_path/files_report.txt"
+      # echo "File DAMAGED DATA" >>"$current_path/files_report.txt"
+
+      echo "$identify_output" >>"$parent_directory/files_report_master.txt"
+      echo "File DAMAGED DATA" >>"$parent_directory/files_report_master.txt"
+
+      echo >>"$parent_directory/files_report_master.txt" # add new line to file
+      echo >>"$parent_directory/files_report_master.txt" # add new line to file
+
       echo -e "${RED}File DAMAGED DATA"
       echo ""
 
-      echo "$identify_output" >>"$current_path/files_report.txt"
-      echo "File DAMAGED DATA" >>"$current_path/files_report.txt"
-
-      echo "$identify_output" >>"$parent_folder/files_report_master.txt"
-      echo "File DAMAGED DATA" >>"$parent_folder/files_report_master.txt"
-
     else
+      # echo "File OK" >>"$current_path/files_report.txt"
+
+      echo "File OK" >>"$parent_directory/files_report_master.txt"
+      echo >>"$parent_directory/files_report_master.txt" # add new line to file
+
       echo -e "${GREEN}File OK"
     fi
   fi
@@ -265,49 +318,59 @@ check_CR2_image_thumbnail() {
 }
 
 copy_damaged_file() {
+
   local file="$1"
-  local damaged_folder="$current_path/damaged"
+  # instead of creating a damaged directory in each current path
+  # local damaged_directory="$current_path/damaged"
+
+  # create a damaged directory in the parent directory and append the name of directory where the damaged files are to it
+  local damaged_directory="$parent_directory/$(basename "$current_path")_damaged"
+
   local filename=$(basename "$file")
   local extension="${filename##*.}"
   local base_filename="${filename%.*}"
   local new_filename="${base_filename}_damaged.${extension}"
 
-  mkdir -p "$damaged_folder"
-  cp "$file" "$damaged_folder/$new_filename"
+  mkdir -p "$damaged_directory"
+  cp "$file" "$damaged_directory/$new_filename"
 }
 
 remove_log_files() {
+
   echo ""
   echo -e "${WHITE}Removing log files.."
+
   while IFS= read -r current_path; do
 
     # If there is a "files_report.txt" in the current path
-    if [ -f "$current_path/files_report.txt" ]; then
+    # if [ -f "$current_path/files_report.txt" ]; then
 
-      # If there are no errors remove the "files_report.txt"
-      search_string="Corrupt"
-      if ! grep -q "$search_string" "$current_path/files_report.txt"; then
-        echo ""
-        echo -e "${GREEN}No Errors found in all checked files - deleting files report."
-        rm -f "$current_path/files_report.txt"
-      fi
-    fi
+    #   # If there are no errors remove the "files_report.txt"
+    #   search_string="Corrupt"
+    #   if ! grep -q "$search_string" "$current_path/files_report.txt"; then
+    #     echo ""
+    #     echo -e "${GREEN}No Errors found in all checked files - deleting files report."
+    #     rm -f "$current_path/files_report.txt"
+    #   fi
+    # fi
 
-    # If there is a "files_report_master.txt" in the current path
-    if [ -f "$current_path/files_report_master.txt" ]; then
+    # If there is a "files_report_master.txt" in the parent directory
+    if [ -f "$parent_directory/files_report_master.txt" ]; then
 
       # If there are no errors remove the "files_report_master.txt"
       search_string="Corrupt"
-      if ! grep -q "$search_string" "$current_path/files_report_master.txt"; then
+      if ! grep -q "$search_string" "$parent_directory/files_report_master.txt"; then
         echo ""
-        echo -e "${GREEN}No Errors found in all checked files - deleting files report master."
-        rm -f "$current_path/files_report_master.txt"
+        echo -e "${GREEN}No Errors found in all files report master - deleting files report master."
+        rm -f "$parent_directory/files_report_master.txt"
       fi
     fi
 
-    rm -f "$current_path/folder_tree.txt"
     rm -f "$current_path/files_paths.txt"
-  done <"$parent_folder/folder_tree.txt"
+    # rm -f "$current_path/directory_tree.txt"
+    rm -f "$current_path/files_damaged.txt"
+
+  done <"$parent_directory/directory_tree.txt"
 
   echo ""
   echo -e "${WHITE}Done."
@@ -316,12 +379,12 @@ remove_log_files() {
 
 # Check if an argument is provided
 if [ -z "$1" ]; then
-  echo "Usage: $0 <path/to/folder> or ."
+  echo "Usage: $0 <path/to/directory> or ."
   exit 1
 fi
 
-store_parent_folder "$1"
-create_folder_tree
+store_parent_directory "$1"
+create_directory_tree_with_original_modification_time
 filter_image_files
 check_CR2_image_metadata
 remove_log_files
