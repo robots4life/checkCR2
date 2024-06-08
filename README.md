@@ -28,7 +28,7 @@ checkCR2.sh /path/to/folder_with_cr2_files/to_check
 
 This script
 
-- creates a list of all subfolders given the parent folder passed in as argument
+- creates a list of all subdirectories given the parent directory passed in as argument
 - leaves the original files untouched
 - checks the CR2 files metadata
 - checks the extracted JPEG file from the CR2 file for corruption
@@ -39,3 +39,4 @@ This script
 - a detailed file report will be generated
 - a list of all damaged files will be generated
 - if all files are ok all log files and temporary files will be deleted
+- all original modification times of all directories and all subdirectories are stored and restored before the script completes
