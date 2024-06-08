@@ -39,4 +39,4 @@ This script
 - a detailed file report will be generated
 - a list of all damaged files will be generated
 - if all files are ok all log files and temporary files will be deleted
-- all original modification times of all directories and all subdirectories are stored and restored before the script completes
+- all original modification times and creation times of all directories and all subdirectories are stored and restored before the script completes
