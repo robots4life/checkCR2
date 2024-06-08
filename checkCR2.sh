@@ -32,11 +32,7 @@ store_parent_directory() {
   esac
 }
 
-create_directory_tree_with_original_modification_time() {
-
-  # Get the original modification time of the parent directory
-  # parent_directory_original_modification_time=$(stat -c %y $parent_directory)
-  # echo $parent_directory_original_modification_time
+create_directory_tree() {
 
   # Check if a file named "directory_tree.txt" exists in the parent directory
   if [ -f "$parent_directory/directory_tree.txt" ]; then
@@ -56,21 +52,12 @@ create_directory_tree_with_original_modification_time() {
 
     else
 
-      # # Get the original modification time of the subdirectory
-      # subdirectory_original_modification_time=$(stat -c %y $subdirectory)
-      # echo "$subdirectory_original_modification_time" >>"$parent_directory/directory_tree.txt"
-
       # Write the subdirectory path to the "directory_tree.txt" file
       echo "$subdirectory" >>"$parent_directory/directory_tree.txt"
 
     fi
 
   done < <(find "$parent_directory" -type d -print0)
-
-  # Restore the original modification time of the parent directory
-  # touch -m -t 202406010000.00 directory
-  # formatted_date=$(date -d "$parent_directory_original_modification_time" +%Y%m%d%H%M.%S)
-  # touch -m -t "$formatted_date" "$parent_directory"
 
   # Remove duplicate paths from the "directory_tree.txt" file
   sort -u "$parent_directory/directory_tree.txt" -o "$parent_directory/directory_tree.txt"
@@ -384,7 +371,7 @@ if [ -z "$1" ]; then
 fi
 
 store_parent_directory "$1"
-create_directory_tree_with_original_modification_time
+create_directory_tree
 filter_image_files
 check_CR2_image_metadata
 remove_log_files
