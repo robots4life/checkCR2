@@ -17,6 +17,13 @@ store_parent_directory() {
   echo ""
   echo "$parent_directory"
   echo ""
+
+  # Get the modification time of the parent directory
+  modification_time_parent_directory=$(stat -c %y "$parent_directory")
+
+  echo "$modification_time_parent_directory"
+  echo ""
+
   read -p "Is this correct? (y/n) " confirm
   echo ""
   case $confirm in
@@ -42,21 +49,25 @@ create_directory_tree() {
   # Create a new file named "directory_tree.txt" in the parent directory
   touch "$parent_directory/directory_tree.txt"
 
+  # Create a new file named "modification_times.txt" in the parent directory
+  touch "$parent_directory/modification_times.txt"
+
+  # Write the modification time of the parent directory to the "modification_times.txt" file
+  # echo "parent:$parent_directory:$modification_time_parent_directory" >>"$parent_directory/modification_times.txt"
+
   # Traverse all subdirectories of the parent directory
   while IFS= read -r -d '' subdirectory; do
-
     # Check if the subdirectory is named "damaged"
     if [ "$(basename "$subdirectory")" = "damaged" ]; then
-
       rm -rf "$subdirectory"
-
     else
-
       # Write the subdirectory path to the "directory_tree.txt" file
       echo "$subdirectory" >>"$parent_directory/directory_tree.txt"
 
+      # Get the modification time of the subdirectory and write it to the "modification_times.txt" file
+      modification_time=$(stat -c %y "$subdirectory")
+      echo "$subdirectory:$modification_time" >>"$parent_directory/modification_times.txt"
     fi
-
   done < <(find "$parent_directory" -type d -print0)
 
   # Remove duplicate paths from the "directory_tree.txt" file
@@ -64,7 +75,7 @@ create_directory_tree() {
 
   # Print the "directory_tree.txt" file to the terminal
   echo ""
-  echo "This is the list of directorys that will be checked."
+  echo "This is the list of directories that will be checked."
   echo ""
   cat "$parent_directory/directory_tree.txt"
 
@@ -354,7 +365,7 @@ remove_log_files() {
     fi
 
     rm -f "$current_path/files_paths.txt"
-    # rm -f "$current_path/directory_tree.txt"
+    rm -f "$current_path/directory_tree.txt"
     rm -f "$current_path/files_damaged.txt"
 
   done <"$parent_directory/directory_tree.txt"
@@ -362,6 +373,24 @@ remove_log_files() {
   echo ""
   echo -e "${WHITE}Done."
   echo ""
+}
+
+restore_original_modification_times() {
+  # Check if the "modification_times.txt" file exists
+  if [ -f "$parent_directory/modification_times.txt" ]; then
+    # Traverse all lines in the "modification_times.txt" file
+    while IFS=':' read -r directory modification_time; do
+      # Restore the original modification time for the directory
+      touch -d "$modification_time" "$directory"
+    done <"$parent_directory/modification_times.txt"
+  else
+    echo "Error: modification_times.txt file not found."
+    exit 1
+  fi
+
+  rm -f $parent_directory/modification_times.txt
+
+  touch -d "$modification_time_parent_directory" "$parent_directory"
 }
 
 # Check if an argument is provided
@@ -375,3 +404,4 @@ create_directory_tree
 filter_image_files
 check_CR2_image_metadata
 remove_log_files
+restore_original_modification_times
